@@ -21,25 +21,22 @@ import {
   Separator,
 } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
-import { userStore } from "../store/userStore.js";
 import ModalInfo from "./ModalInfo.tsx";
 import "./ListItem.css";
+import {
+  useGetUserDescriptionMutation,
+  useGetUsersMutation,
+} from "../hooks/userHooks.ts";
 
 const DialogInfo = ({ user }: object) => {
-  const getUserDescriptionStore = userStore(
-    (state) => state.getUserDescription
-  );
   const [userDescription, setUserDescription] = useState({});
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (Object.keys(user).length !== 0) {
-        const res = await getUserDescriptionStore(user.id);
-        setUserDescription(res.data.data);
-      }
-    };
+  const mutationGetUserDescription = useGetUserDescriptionMutation((data) => {
+    setUserDescription(data);
+  });
 
-    fetchData();
+  useEffect(() => {
+    mutationGetUserDescription.mutate(user.id);
   }, [user]);
 
   return (
@@ -75,47 +72,37 @@ const DialogInfo = ({ user }: object) => {
 };
 
 const ListItemPage = () => {
-  const getUsersStore = userStore((state) => state.getUsers);
   const [usersData, setUsersData] = useState([]);
   const [pagesData, setPagesData] = useState({ page: 1 });
   const [modelData, setModelData] = useState({ isShow: false, userInfo: {} });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const res = await getUsersStore(pagesData.page);
-      const arr = res.data.data.map((item: object) => {
+  const setData = (data: object) => {
+    setUsersData(
+      data.data.map((item) => {
         item.full_name = `${item.first_name} ${item.last_name}`;
         return item;
-      });
-      setUsersData(arr);
-      setPagesData({
-        page: res.data.page,
-        per_page: res.data.per_page,
-        total: res.data.total,
-        total_pages: res.data.total_pages,
-      });
-    };
+      })
+    );
+    setPagesData({
+      page: data.page,
+      per_page: data.per_page,
+      total: data.total,
+      total_pages: data.total_pages,
+    });
+  };
 
-    fetchData();
+  const mutationGetUsers = useGetUsersMutation(setData);
+
+  useEffect(() => {
+    mutationGetUsers.mutate(pagesData.page);
   }, [pagesData.page]);
 
   const goNextPage = () => {
-    setPagesData({ ...pagesData, page: pagesData.page + 1 });
+    setPagesData((prev) => ({ ...prev, page: prev.page + 1 }));
   };
+
   const goPrevPage = () => {
-    setPagesData({ ...pagesData, page: pagesData.page - 1 });
-    // const res = getUsersStore(pagesData.page);
-    // const arr = res.data.data.map((item: object) => {
-    //   item.full_name = `${item.first_name} ${item.last_name}`;
-    //   return item;
-    // });
-    // setUsersData(arr);
-    // setPagesData({
-    //   page: res.data.page,
-    //   per_page: res.data.per_page,
-    //   total: res.data.total,
-    //   total_pages: res.data.total_pages,
-    // });
+    setPagesData((prev) => ({ ...prev, page: prev.page - 1 }));
   };
   const openModel = (id: string) => {
     const tmp = usersData.find((item) => item.id == id);

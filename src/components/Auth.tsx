@@ -13,21 +13,20 @@ import {
   IconButton,
 } from "@radix-ui/themes";
 import { EyeOpenIcon, EyeClosedIcon } from "@radix-ui/react-icons";
-import { userStore } from "../store/userStore.js";
 import { useNavigate } from "react-router-dom";
+import {
+  usePostLoginMutation,
+  usePostRegistMutation,
+} from "../hooks/userHooks";
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const loginStore = userStore((state) => state.login);
-  const registerStore = userStore((state) => state.register);
-
   const [isShowPasswd, setIsShowPasswd] = useState(false);
 
   const [userData, setUserData] = useState({
     email: "eve.holt@reqres.in",
-    password: "pistol",
+    password: "зшыещд",
   });
-
   const setEmail = (val: string) => {
     setUserData({ ...userData, email: val });
   };
@@ -40,34 +39,54 @@ const AuthPage = () => {
     setIsValidData(userData.email !== "" && userData.password !== "");
   }, [userData]);
 
-  const [isLoadingData, setIsLoadingData] = useState(false);
   const [statusResponse, setStatusResponse] = useState({
     code: null,
     msg: "",
   });
-  const wrapperSend = async (funcSend) => {
-    setIsLoadingData(true);
-    setIsValidData(false);
-    const res = await funcSend();
-    if (res?.data) {
+
+  const saveAndRedirect = (token: string) => {
+    localStorage.setItem("token", token);
+    navigate("/list");
+  };
+
+  const mutationLogin = usePostLoginMutation(
+    (data: object) => {
       setStatusResponse({
-        code: res.status,
+        code: data.status,
         msg: "",
       });
-      navigate("/list");
-    } else {
+      saveAndRedirect(data.data.token);
+    },
+    (err: object) => {
       setStatusResponse({
-        code: res.response.status,
-        msg: res.response.data.error,
+        code: err.status,
+        msg: err.data.error,
       });
     }
-    setIsLoadingData(false);
+  );
+  const sendLogin = () => {
+    setIsValidData(false);
+    mutationLogin.mutate(userData);
   };
-  const sendLogin = async () => {
-    await wrapperSend(() => loginStore(userData));
-  };
-  const sendRegister = async () => {
-    await wrapperSend(() => registerStore(userData));
+
+  const mutationRegist = usePostRegistMutation(
+    (data: object) => {
+      setStatusResponse({
+        code: data.status,
+        msg: "",
+      });
+      saveAndRedirect(data.data.token);
+    },
+    (err: object) => {
+      setStatusResponse({
+        code: err.status,
+        msg: err.data.error,
+      });
+    }
+  );
+  const sendRegist = () => {
+    setIsValidData(false);
+    mutationRegist.mutate(userData);
   };
 
   return (
@@ -112,7 +131,7 @@ const AuthPage = () => {
               <Flex justify="between" align="center">
                 <Button
                   disabled={!isValidData}
-                  loading={isLoadingData}
+                  loading={mutationLogin.isPending || mutationRegist.isPending}
                   onClick={sendLogin}
                 >
                   Login
@@ -121,8 +140,8 @@ const AuthPage = () => {
                 <Button
                   variant="outline"
                   disabled={!isValidData}
-                  loading={isLoadingData}
-                  onClick={sendRegister}
+                  loading={mutationLogin.isPending || mutationRegist.isPending}
+                  onClick={sendRegist}
                 >
                   Register
                 </Button>
@@ -131,7 +150,7 @@ const AuthPage = () => {
           </Card>
           {statusResponse.code !== null ? (
             <Flex wrap="wrap" gap="1" py="2" justify="center">
-              <Badge color={statusResponse.code === 200 ? "green" : "red"}>
+              <Badge color={statusResponse.code < 300 ? "green" : "red"}>
                 {statusResponse.code}
               </Badge>
               {statusResponse.msg !== "" ? (

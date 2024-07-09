@@ -1,8 +1,7 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { userStore } from "../store/userStore.js";
 
 const PrivateRouter = () => {
-  const token = userStore((state) => state.token);
+  const token = localStorage.getItem("token") || "";
   const location = useLocation();
   const auth = token !== "";
   if (!auth) {
